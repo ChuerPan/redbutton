@@ -17,8 +17,6 @@ function setupEventListeners() {
     myInfoButton.addEventListener('click', window.showMyInfo);
     myInfoButton.style.pointerEvents = 'auto';
     myInfoButton.style.cursor = 'pointer';
-  } else {
-    console.error('未找到myInfoButton元素');
   }
   
   if (rankingButton) {

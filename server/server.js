@@ -158,6 +158,16 @@ app.post('/api/save-user', (req, res) => {
       historyJson
     );
     
+    // 如果用户设置了名称，同时更新排行榜中的所有该用户记录
+    if (hasSetUserName && userName) {
+      const updateRankingStmt = db.prepare(`
+        UPDATE leaderboard 
+        SET user_name = ?, avatar_url = ?, region = ?
+        WHERE user_id = ?
+      `);
+      updateRankingStmt.run(userName, avatarUrl || null, finalRegion, userId);
+    }
+    
     res.json({ success: true });
   } catch (error) {
     console.error('保存用户数据失败:', error);

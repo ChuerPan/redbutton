@@ -72,7 +72,6 @@ function updateMyInfoDisplay() {
 }
 
 window.editUserName = function() {
-  console.log('修改玩家名称按钮被点击');
   newNameInput.value = gameState.userName;
   editNameModal.style.display = 'flex';
   editNameModal.classList.remove('hidden');
@@ -104,8 +103,6 @@ function confirmEditUserName() {
 }
 
 function showClickMessage(count, isBonus = false) {
-  console.log('显示提示文字, count:', count);
-  
   const probability = Math.pow(0.99, count);
   
   let formattedProbability;
@@ -135,8 +132,11 @@ function showClickMessage(count, isBonus = false) {
       bonusText.style.transform = 'scale(1)';
     }, 200);
   } else {
-    bonusText.innerHTML = '';
-    bonusText.style.display = 'none';
+    // 如果不是双倍，且没有正在显示双倍，则清空
+    if (!gameState.showingBonus) {
+      bonusText.innerHTML = '';
+      bonusText.style.display = 'none';
+    }
   }
   
   clickCountText.innerHTML = countText;
@@ -162,16 +162,41 @@ function showClickMessage(count, isBonus = false) {
       clickMessage.style.transform = 'translateY(0) scale(1)';
     }, 150);
   }, 10);
+  
+  // 清除之前的定时器
+  if (gameState.clickMessageTimer) {
+    clearTimeout(gameState.clickMessageTimer);
+    gameState.clickMessageTimer = null;
+  }
+  
+  // 普通提示3秒后隐藏
+  gameState.clickMessageTimer = setTimeout(() => {
+    clickMessage.style.display = 'none';
+    gameState.clickMessageTimer = null;
+  }, 3000);
+  
+  // 如果是双倍奖励，单独处理双倍提示文字，显示1秒
+  if (isBonus) {
+    gameState.showingBonus = true;
+    
+    if (gameState.bonusMessageTimer) {
+      clearTimeout(gameState.bonusMessageTimer);
+    }
+    
+    gameState.bonusMessageTimer = setTimeout(() => {
+      bonusText.innerHTML = '';
+      bonusText.style.display = 'none';
+      gameState.showingBonus = false;
+      gameState.bonusMessageTimer = null;
+    }, 1000);
+  }
 }
 
 window.showMyInfo = function() {
-  console.log('尝试显示我的信息');
   updateMyInfoDisplay();
   if (myInfoModal) {
     myInfoModal.style.display = 'flex';
     setTimeout(drawStatsChart, 100);
-  } else {
-    console.error('未找到myInfoModal元素');
   }
 }
 
@@ -188,13 +213,11 @@ function hideRanking() {
 
 function drawStatsChart() {
   if (!statsChart || !statsChartElement) {
-    console.error('Chart elements not found');
     return;
   }
   
   const container = document.querySelector('.chart-container');
   if (!container) {
-    console.error('Chart container not found');
     return;
   }
   
@@ -206,7 +229,7 @@ function drawStatsChart() {
   
   statsChart.clearRect(0, 0, containerWidth, containerHeight);
   
-  const recentHistory = [...gameState.stats.history].slice(-20);
+  const recentHistory = [...gameState.stats.history].slice(-10);
   
   if (recentHistory.length === 0) {
     statsChart.fillStyle = '#fff';
@@ -219,13 +242,13 @@ function drawStatsChart() {
   const chartWidth = statsChartElement.width - padding.left - padding.right;
   const chartHeight = statsChartElement.height - padding.top - padding.bottom;
   
-  // 始终预留20个柱子的位置
-  const maxSlots = 20;
+  // 始终预留10个柱子的位置
+  const maxSlots = 10;
   const maxCoins = recentHistory.length > 0 ? Math.max(...recentHistory.map(item => item.coins), 100) : 100;
-  const barWidth = 10;
-  // 按照20个柱子的位置计算间距，保持一致
+  const barWidth = 18;
+  // 按照10个柱子的位置计算间距，保持一致
   const availableWidth = chartWidth - 40; // 留出一些边距
-  const barSpacing = Math.max(2, (availableWidth - barWidth * maxSlots) / (maxSlots - 1));
+  const barSpacing = Math.max(5, (availableWidth - barWidth * maxSlots) / (maxSlots - 1));
   
   statsChart.strokeStyle = '#666';
   statsChart.lineWidth = 1;
@@ -312,20 +335,20 @@ function hideNewPlayerNameModal() {
   newPlayerNameInput.value = '';
 }
 
-function skipSetName() {
+async function skipSetName() {
   gameState.hasSetUserName = true;
-  saveUserData();
+  await saveUserData();
   hideNewPlayerNameModal();
   showRanking();
 }
 
-function confirmSetName() {
+async function confirmSetName() {
   const newName = newPlayerNameInput.value;
   if (newName && newName.trim() !== '') {
     gameState.userName = newName.trim();
     gameState.hasSetUserName = true;
     userNameEl.textContent = gameState.userName;
-    saveUserData();
+    await saveUserData();
     
     // 更新排行榜中的用户名称
     const rankings = getRankings();
@@ -337,7 +360,7 @@ function confirmSetName() {
   } else {
     // 如果用户没有输入名称，仍然标记为已设置
     gameState.hasSetUserName = true;
-    saveUserData();
+    await saveUserData();
   }
   
   hideNewPlayerNameModal();

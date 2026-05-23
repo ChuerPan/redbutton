@@ -29,6 +29,11 @@
   .pixel-text {
     text-shadow: 2px 2px 0 #000;
   }
+  .pixel-chinese {
+    font-family: 'ZCOOL QingKe HuangYou', 'Microsoft YaHei', 'SimHei', sans-serif;
+    text-shadow: 1px 1px 0 #000;
+    letter-spacing: 1px;
+  }
   .coin-shadow {
     position: absolute;
     width: 80%;

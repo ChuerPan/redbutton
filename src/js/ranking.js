@@ -20,7 +20,7 @@ async function showRanking() {
         }));
       }
     } catch (error) {
-      console.warn('从服务器获取排行榜失败，使用本地数据:', error);
+      // 从服务器获取失败，使用本地数据
       rankings = getRankings();
     }
   } else {
@@ -87,13 +87,13 @@ async function showRanking() {
       const userNameDisplay = ranking.userName ? ranking.userName.substring(0, 8) + '...' : '匿名';
       
       row.innerHTML = `
-        <td class="py-2" ${nameColor}>${index + 1}</td>
-        <td class="py-2">${avatarHTML}</td>
-        <td class="py-2" ${nameColor}>${userNameDisplay}</td>
-        <td class="py-2" ${nameColor}>${ranking.region || '未知'}</td>
-        <td class="py-2" ${nameColor}>${formatCoins(ranking.coins)}</td>
-        <td class="py-2" ${nameColor}>${ranking.deathCount !== undefined ? ranking.deathCount : '-'}</td>
-        <td class="py-2" ${nameColor}>${probDisplay}</td>
+        <td class="py-2 text-center" ${nameColor}>${index + 1}</td>
+        <td class="py-2 text-center flex justify-center">${avatarHTML}</td>
+        <td class="py-2 text-center" ${nameColor}>${userNameDisplay}</td>
+        <td class="py-2 text-center" ${nameColor}>${ranking.region || '未知'}</td>
+        <td class="py-2 text-center" ${nameColor}>${formatCoins(ranking.coins)}</td>
+        <td class="py-2 text-center" ${nameColor}>${ranking.deathCount !== undefined ? ranking.deathCount : '-'}</td>
+        <td class="py-2 text-center" ${nameColor}>${probDisplay}</td>
       `;
       
       rankingList.appendChild(row);
@@ -170,13 +170,13 @@ function addUserRankingEntry(rankings) {
   
   userRankingEntry.innerHTML = `
     <tr>
-      <td class="py-2 font-bold" style="color: #3b82f6;">${userRank > 100 ? '100+' : userRank}</td>
-      <td class="py-2">${avatar}</td>
-      <td class="py-2 font-bold" style="color: #3b82f6;">${gameState.userName.substring(0, 8)}...(我)</td>
-      <td class="py-2" style="color: #3b82f6;">${gameState.region}</td>
-      <td class="py-2 font-bold" style="color: #3b82f6;">${formatCoins(currentCoins)}</td>
-      <td class="py-2 font-bold" style="color: #3b82f6;">${userDeathCount}</td>
-      <td class="py-2 font-bold" style="color: #3b82f6;">${userProbDisplay}</td>
+      <td class="py-2 font-bold text-center" style="color: #3b82f6;">${userRank > 100 ? '100+' : userRank}</td>
+      <td class="py-2 text-center flex justify-center">${avatar}</td>
+      <td class="py-2 font-bold text-center" style="color: #3b82f6;">${gameState.userName.substring(0, 8)}...(我)</td>
+      <td class="py-2 text-center" style="color: #3b82f6;">${gameState.region}</td>
+      <td class="py-2 font-bold text-center" style="color: #3b82f6;">${formatCoins(currentCoins)}</td>
+      <td class="py-2 font-bold text-center" style="color: #3b82f6;">${userDeathCount}</td>
+      <td class="py-2 font-bold text-center" style="color: #3b82f6;">${userProbDisplay}</td>
     </tr>
   `;
 }

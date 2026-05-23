@@ -45,12 +45,11 @@ async function loadUserData() {
         if (serverData.gameHistory) {
           gameState.stats.history = serverData.gameHistory;
         }
-        console.log('已从服务器同步用户数据');
         // 保存回本地，确保数据一致
         saveUserDataLocal();
       }
     } catch (error) {
-      console.warn('从服务器同步数据失败，使用本地数据:', error);
+      // 静默处理同步错误，使用本地数据
     }
   }
 }
@@ -83,9 +82,8 @@ async function saveUserData() {
   if (getIsOnline()) {
     try {
       await saveUserDataToServer();
-      console.log('用户数据已保存到服务器');
     } catch (error) {
-      console.warn('保存用户数据到服务器失败:', error);
+      // 静默处理保存错误
     }
   }
 }

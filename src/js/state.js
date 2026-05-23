@@ -6,6 +6,8 @@ const gameState = {
   bonusCount: 0,
   highScore: 0,
   clickMessageTimer: null,
+  bonusMessageTimer: null,
+  showingBonus: false,
   showingGameOver: false,
   userId: null,
   userName: null,

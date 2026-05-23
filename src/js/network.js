@@ -82,7 +82,6 @@ async function apiRequest(endpoint, options = {}) {
             errorMsg = '服务器返回错误';
         }
         
-        console.error('API请求失败:', error);
         throw new Error(errorMsg);
     }
 }
@@ -160,14 +159,10 @@ function showNetworkError(error) {
  * 初始化网络连接
  */
 async function initNetwork() {
-    console.log('正在检查服务器连接...');
     const online = await checkConnection();
     
     if (!online) {
-        console.warn('服务器连接失败，进入离线模式');
         showNetworkError(new Error('无法连接'));
-    } else {
-        console.log('服务器连接成功！');
     }
     
     updateOfflineIndicator();
