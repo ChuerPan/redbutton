@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>像素核弹点击</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  
+  <script src="src/js/config.js"></script>
+  
+  <style type="text/tailwindcss">
+    @import "src/css/styles.css";
+  </style>
+  <style>
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #1C1C1E;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    #loading-screen.hidden {
+      display: none;
+    }
+    .loading-dots {
+      display: flex;
+      gap: 8px;
+      margin-top: 24px;
+    }
+    .loading-dot {
+      width: 12px;
+      height: 12px;
+      background-color: #FFD700;
+      border-radius: 50%;
+      animation: loading-pulse 1.4s ease-in-out infinite both;
+    }
+    .loading-dot:nth-child(1) {
+      animation-delay: 0s;
+    }
+    .loading-dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    .loading-dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+    @keyframes loading-pulse {
+      0%, 80%, 100% {
+        transform: scale(0);
+        opacity: 0.5;
+      }
+      40% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body class="bg-pixelDark text-pixelLight min-h-screen overflow-hidden relative">
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <!-- Pixel Bomb Icon -->
+    <div class="w-20 h-24 mb-8">
+      <div class="w-20 h-16 bg-black rounded-full relative">
+        <div class="w-10 h-10 bg-black absolute -top-2 left-1/2 transform -translate-x-1/2 rounded-t-full"></div>
+        <div class="w-4 h-4 bg-red-500 absolute -top-6 left-1/2 transform -translate-x-1/2 rounded-full animate-pulse"></div>
+      </div>
+    </div>
+    
+    <h1 class="font-pixel text-pixelRed text-2xl md:text-3xl pixel-text text-center px-4 mb-4">别点红色按钮</h1>
+    <p class="text-gray-400 text-sm mb-8" style="font-family: 'Microsoft YaHei', sans-serif;">准备好了吗？</p>
+    
+    <div id="start-button" class="start-button mt-8">
+      <div class="pixel-button bg-pixelGreen px-8 py-4 font-pixel text-lg cursor-pointer">
+        开始游戏
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Container -->
+  <div id="game-container" class="w-full h-screen relative" style="padding-top: 20px;">    
+    <div class="absolute top-8 left-4 z-10 text-xs md:text-sm max-w-[300px] probability-text" style="font-family: 'Microsoft YaHei', sans-serif;">
+      <div>1、点击【红色按钮】开始游戏</div>
+      <div>2、99%概率获得100金币</div>
+      <div>3、1%概率爆炸，游戏失败</div>
+      <div>4、有1%的1%概率获得双倍金币</div>
+      <div>5、长按1秒以上可自动点击</div>
+      <div>6、只有"及时收手"才能结算金币</div>
+    </div>
+    
+    <div class="absolute top-8 left-0 right-0 flex flex-col items-center z-10">
+      <div class="w-12 h-12 relative mb-1" id="coin-icon">
+        <div class="absolute inset-0">
+          <div class="w-3 h-3 bg-pixelGold absolute top-0 left-3"></div>
+          <div class="w-3 h-3 bg-pixelGold absolute top-0 left-6"></div>
+          <div class="w-3 h-3 bg-pixelGold absolute top-3 left-0"></div>
+          <div class="w-6 h-6 bg-pixelGold absolute top-3 left-3"></div>
+          <div class="w-3 h-3 bg-pixelGold absolute top-3 left-9"></div>
+          <div class="w-3 h-3 bg-pixelGold absolute top-6 left-0"></div>
+          <div class="w-6 h-6 bg-pixelGold absolute top-6 left-3"></div>
+          <div class="w-3 h-3 bg-pixelGold absolute top-6 left-9"></div>
+          <div class="w-3 h-3 bg-pixelGold absolute top-9 left-3"></div>
+          <div class="w-3 h-3 bg-pixelGold absolute top-9 left-6"></div>
+          <div class="w-3 h-3 bg-yellow-600 absolute top-4.5 left-4.5"></div>
+        </div>
+      </div>
+      
+      <div class="font-pixel text-pixelGold text-lg md:text-xl pixel-text" id="coin-count">0.00</div>
+      
+      <div class="font-pixel text-gray-400 text-xs md:text-sm mt-1 pixel-text" id="high-score">最高纪录 0.00</div>
+      
+      <div class="font-pixel text-gray-500 text-xs mt-1 pixel-text" id="game-hint">99%获得1000金币，1%爆炸失败</div>
+    </div>
+    
+    <div id="game-area" class="w-full h-full pt-24 pb-28 overflow-hidden relative">
+    </div>
+    
+    <div id="nuclear-button" class="pixel-button bg-pixelRed absolute bottom-32 left-1/2 transform -translate-x-1/2 w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center cursor-pointer z-10">
+      <div class="w-8 h-10 relative">
+        <div class="w-8 h-6 bg-black rounded-full"></div>
+        <div class="w-4 h-4 bg-black absolute top-6 left-2"></div>
+      </div>
+    </div>
+    
+    <div id="click-message-container" class="absolute left-0 right-0 flex justify-center z-20 pointer-events-none" style="bottom: calc(8rem + 8rem);">
+      <div class="click-message font-pixel text-pixelGold text-xs md:text-sm pixel-text text-center" id="click-message">
+        <div id="bonus-text" class="font-pixel text-pixelGold text-lg md:text-xl pixel-text mb-2"></div>
+        <div id="click-count-text"></div>
+        <div id="probability-text"></div>
+      </div>
+    </div>
+    
+    <div id="end-button" class="pixel-button bg-blue-700 absolute bottom-16 left-1/2 transform -translate-x-1/2 px-4 py-2 font-pixel text-sm md:text-base cursor-pointer whitespace-nowrap z-10 hidden">
+      及时收手
+    </div>
+    
+    <!-- 左下角离线提示 -->
+    <div id="offline-indicator" class="absolute bottom-4 left-4 z-10" style="display: none;">
+      <div class="bg-red-600 text-white px-3 py-2 rounded pixel-text text-xs" style="font-family: 'Microsoft YaHei', sans-serif;">
+        📴 离线单机模式<br><span class="text-gray-300 text-xs">无法进入排行榜</span>
+      </div>
+    </div>
+    
+    <div class="absolute bottom-4 right-4 flex flex-col items-end z-10">
+      <div id="ranking-button" class="pixel-button bg-gray-700 mb-2 px-3 py-2 font-pixel text-sm md:text-base cursor-pointer z-20 whitespace-nowrap">
+        排行榜
+      </div>
+      <div id="my-info-button" class="pixel-button bg-gray-700 mb-2 px-3 py-2 font-pixel text-sm md:text-base cursor-pointer z-20 whitespace-nowrap">
+        我的信息
+      </div>
+    </div>
+    
+    <!-- 游戏失败界面 -->
+    <div id="game-over-screen" class="fixed inset-0 bg-black bg-opacity-80 z-40 hidden flex items-start justify-center pt-[20vh]">
+      <div class="text-center w-full px-4">
+        <h2 class="font-pixel text-pixelRed text-4xl md:text-5xl pixel-text mb-2" style="text-shadow: 0 0 20px rgba(255, 0, 0, 0.8), 0 0 40px rgba(255, 0, 0, 0.6);">~~BOOOM~~</h2>
+        <p class="text-yellow-400 text-xl md:text-2xl mb-4 font-pixel" style="font-family: 'Microsoft YaHei', sans-serif;">您触发了爆炸</p>
+        <p class="text-gray-300 text-lg md:text-xl mb-8 font-pixel" style="font-family: 'Microsoft YaHei', sans-serif;">游戏失败！</p>
+        <p class="text-gray-400 text-base mb-8" style="font-family: 'Microsoft YaHei', sans-serif;">损失金币: <span id="lost-coins" class="text-pixelGold font-pixel text-xl">0</span></p>
+        <div id="restart-button" class="pixel-button bg-pixelGreen px-8 py-4 font-pixel text-lg cursor-pointer inline-block">
+          重新开始
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="ranking-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 hidden items-center justify-center">
+    <div class="bg-pixelDark p-4 md:p-6 rounded-lg pixel-border max-w-4xl w-full mx-4">
+      <h2 class="font-pixel text-center text-xl mb-4 pixel-text">排行榜</h2>
+      <div class="overflow-y-auto max-h-[60vh]">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 z-10 bg-pixelDark">
+            <tr class="border-b border-gray-600">
+              <th class="py-2 text-left">名次</th>
+              <th class="py-2 text-left">用户头像</th>
+              <th class="py-2 text-left">用户名称</th>
+              <th class="py-2 text-left">地区</th>
+              <th class="py-2 text-left">最终金币数</th>
+              <th class="py-2 text-left">死亡</th>
+              <th class="py-2 text-left">概率</th>
+            </tr>
+          </thead>
+          <tbody id="ranking-list"></tbody>
+          <tfoot id="user-ranking-entry" class="border-t-2 border-pixelGold"></tfoot>
+        </table>
+      </div>
+      <div class="mt-4 text-center">
+        <button id="close-ranking" class="pixel-button bg-gray-700 px-4 py-2 font-pixel text-sm cursor-pointer">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="my-info-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 hidden items-center justify-center">
+    <div class="bg-pixelDark p-4 md:p-6 rounded-lg pixel-border max-w-4xl w-full mx-4">
+      <h2 class="font-pixel text-center text-xl mb-4 pixel-text">我的信息</h2>
+      
+      <div class="mb-4 pt-2 border-b border-gray-600 pb-4">
+        <h3 class="font-pixel text-center mb-3 pixel-text">游戏数据统计</h3>
+        <div class="mb-3 flex items-center gap-2" style="font-family: 'Microsoft YaHei', sans-serif;">
+          <span>玩家名称: </span>
+          <span id="user-name" class="text-pixelGold"></span>
+          <button id="edit-name-btn" class="pixel-button bg-gray-700 px-3 py-1 font-pixel text-xs cursor-pointer">修改</button>
+        </div>
+        <div class="grid grid-cols-2 gap-2" style="font-family: 'Microsoft YaHei', sans-serif;">
+          <div>总的游戏次数: <span id="total-games" class="text-pixelGold">0</span></div>
+          <div>总的游戏失败次数: <span id="total-losses" class="text-pixelGold">0</span></div>
+          <div>结束游戏最高金币: <span id="max-ended" class="text-pixelGold">0</span></div>
+          <div>失败游戏最高金币: <span id="max-lost" class="text-pixelGold">0</span></div>
+          <div>获得200金币次数: <span id="bonus-count" class="text-pixelGold">0</span></div>
+          <div>我的ID: <span id="user-id" class="text-pixelGold text-xs truncate"></span></div>
+        </div>
+      </div>
+      
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-pixel text-center pixel-text">金币获取趋势</h3>
+          <div class="text-xs flex items-center gap-3">
+            <div class="flex items-center">
+              <div class="w-3 h-3 bg-pixelRed rounded-full mr-1"></div>
+              <span>失败</span>
+            </div>
+            <div class="flex items-center">
+              <div class="w-3 h-3 bg-pixelGreen rounded-full mr-1"></div>
+              <span>主动结束</span>
+            </div>
+          </div>
+        </div>
+        <div class="chart-container bg-pixelLight bg-opacity-10">
+          <canvas id="stats-chart"></canvas>
+        </div>
+      </div>
+      
+      <div class="mt-4 text-center">
+        <button id="close-my-info" class="pixel-button bg-gray-700 px-4 py-2 font-pixel text-sm cursor-pointer">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 修改玩家名称弹窗 -->
+  <div id="edit-name-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 hidden items-center justify-center">
+    <div class="bg-pixelDark p-6 rounded-lg pixel-border max-w-md w-full mx-4">
+      <h2 class="font-pixel text-center text-xl mb-4 pixel-text">修改玩家名称</h2>
+      <input type="text" id="new-name-input" class="w-full bg-gray-800 text-white px-4 py-2 mb-4 border-2 border-gray-600" placeholder="请输入新名称" style="font-family: 'Microsoft YaHei', sans-serif;">
+      <div class="flex gap-4 justify-center">
+        <button id="cancel-edit-name" class="pixel-button bg-gray-700 px-6 py-2 font-pixel text-sm cursor-pointer">取消</button>
+        <button id="confirm-edit-name" class="pixel-button bg-pixelGreen px-6 py-2 font-pixel text-sm cursor-pointer">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新玩家设置名称弹窗 -->
+  <div id="new-player-name-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 hidden items-center justify-center">
+    <div class="bg-pixelDark p-6 rounded-lg pixel-border max-w-md w-full mx-4">
+      <h2 class="font-pixel text-center text-xl mb-2 pixel-text text-pixelGold">恭喜获得有效成绩！</h2>
+      <p class="text-center text-gray-300 mb-4" style="font-family: 'Microsoft YaHei', sans-serif;">请输入您的大名，让大家认识你！</p>
+      <input type="text" id="new-player-name-input" class="w-full bg-gray-800 text-white px-4 py-2 mb-4 border-2 border-gray-600" placeholder="请输入您的大名" style="font-family: 'Microsoft YaHei', sans-serif;">
+      <div class="flex gap-4 justify-center">
+        <button id="skip-set-name" class="pixel-button bg-gray-700 px-6 py-2 font-pixel text-sm cursor-pointer">跳过</button>
+        <button id="confirm-set-name" class="pixel-button bg-pixelGreen px-6 py-2 font-pixel text-sm cursor-pointer">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="src/js/state.js"></script>
+  <script src="src/js/utils.js"></script>
+  <script src="src/js/network.js"></script>
+  <script src="src/js/storage.js"></script>
+  <script src="src/js/ui.js"></script>
+  <script src="src/js/coin.js"></script>
+  <script src="src/js/ranking.js"></script>
+  <script src="src/js/game.js"></script>
+  <script src="src/js/events.js"></script>
+  
+  <script>
+    let gameLoaded = false;
+    
+    function startLoading() {
+      const startButton = document.getElementById('start-button');
+      const loadingScreen = document.getElementById('loading-screen');
+      
+      if (gameLoaded) {
+        loadingScreen.classList.add('hidden');
+        return;
+      }
+      
+      // 2秒后显示开始按钮
+      setTimeout(() => {
+        startButton.classList.add('visible');
+      }, 2000);
+    }
+    
+    window.startGame = function() {
+      const loadingScreen = document.getElementById('loading-screen');
+      loadingScreen.classList.add('hidden');
+      gameLoaded = true;
+    }
+    
+    async function init() {
+      if (!gameState.userId) {
+        gameState.userId = generateUserId();
+      }
+      if (!gameState.userName) {
+        gameState.userName = generateUserName();
+      }
+      
+      // 初始化网络连接
+      await initNetwork();
+      
+      // 加载用户数据（本地+云端同步）
+      await loadUserData();
+      
+      updateCoinDisplay();
+      updateHighScoreDisplay();
+      setupEventListeners();
+      updateMyInfoDisplay();
+      
+      console.log('myInfoButton元素:', myInfoButton);
+      console.log('myInfoModal元素:', myInfoModal);
+    }
+    
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        init();
+        startLoading();
+      });
+    } else {
+      init();
+      startLoading();
+    }
+  </script>
+</body>
+</html>

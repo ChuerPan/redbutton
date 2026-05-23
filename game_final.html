@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>像素核弹点击</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            pixelRed: '#FF3B30',
+            pixelGold: '#FFD700',
+            pixelDark: '#1C1C1E',
+            pixelLight: '#F5F5F7',
+            pixelGreen: '#34C759',
+          },
+          fontFamily: {
+            pixel: ['"Press Start 2P"', 'cursive', 'system-ui'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .pixel-border {
+        box-shadow: 0 -4px 0 4px rgba(0,0,0,0.3), 
+                    4px 0 0 4px rgba(0,0,0,0.3), 
+                    0 4px 0 4px rgba(0,0,0,0.3), 
+                    -4px 0 0 4px rgba(0,0,0,0.3);
+      }
+      .pixel-button {
+        position: relative;
+        transition: transform 0.1s ease;
+      }
+      .pixel-button::after {
+        content: '';
+        position: absolute;
+        bottom: -4px;
+        right: -4px;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.3);
+        z-index: -1;
+        transition: transform 0.1s ease;
+      }
+      .pixel-button:active {
+        transform: scale(0.95);
+      }
+      .pixel-button:active::after {
+        transform: scale(1.05);
+      }
+      .pixel-text {
+        text-shadow: 2px 2px 0 #000;
+      }
+      .coin-shadow {
+        position: absolute;
+        width: 80%;
+        height: 20%;
+        background-color: rgba(0,0,0,0.2);
+        border-radius: 50%;
+        bottom: -4px;
+        left: 10%;
+        z-index: -1;
+      }
+      .chart-container {
+        position: relative;
+        width: 100%;
+        height: 300px;
+        margin: 1rem 0;
+        border: 1px solid #333;
+        overflow-x: auto;
+      }
+      #stats-chart {
+        width: 100% !important;
+        height: 100% !important;
+      }
+      .probability-text {
+        text-shadow: 1px 1px 0 #000;
+        line-height: 1.6;
+      }
+      .click-message {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%) translateY(-10px);
+        text-align: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+        z-index: 5;
+      }
+      .click-message.visible {
+        opacity: 1;
+      }
+      .bonus-coin {
+        animation: pulse 0.5s ease infinite alternate;
+      }
+      @keyframes pulse {
+        from { transform: scale(1); }
+        to { transform: scale(1.2); }
+      }
+    }
+  </style>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body class="bg-pixelDark text-pixelLight min-h-screen overflow-hidden relative">
+  <!-- 游戏容器 -->
+  <div id="game-container" class="w-full h-screen relative">    
+    <!-- 顶部左侧概率说明文字 -->
+    <div class="absolute top-4 left-4 z-10 text-xs md:text-sm max-w-[300px] probability-text" style="font-family: 'Microsoft YaHei', sans-serif;">
+      <div>1、点击红色按钮开始游戏</div>
+      <div>2、99%概率可获得金币</div>
+      <div>3、1%概率金币消失，游戏失败</div>
+      <div>4、只有主动点击"结束游戏"才能带着金币进入排行榜</div>
+    </div>
+    
+    <!-- 顶部金币区域 -->
+    <div class="absolute top-4 left-0 right-0 flex flex-col items-center z-10">
+      <!-- 像素金币图标 -->
+      <div class="w-12 h-12 relative mb-1" id="coin-icon">
+        <div class="absolute inset-0">
+          <div class="w-3 h-3 bg-pixelGold absolute top-0 left-3"></div>
+          <div class="w-3 h-3 bg-pixelGold absolute top-0 left-6"></div>
+          <div class="w-3 h-3 bg-pixelGold absolute top-3 left-0"></div>
+          <div class="w-6 h-6 bg-pixelGold absolute top-3 left-3"></div>
+          <div class="w-3 h-3 bg-pixelGold absolute top-3 left-9"></div>
+          <div class="w-3 h-3 bg-pixelGold absolute top-6 left-0"></div>
+          <div class="w-6 h-6 bg-pixelGold absolute top-6 left-3"></div>
+          <div class="w-3 h-3 bg-pixelGold absolute top-6 left-9"></div>
+          <div class="w-3 h-3 bg-pixelGold absolute top-9 left-3"></div>
+          <div class="w-3 h-3 bg-pixelGold absolute top-9 left-6"></div>
+          <div class="w-3 h-3 bg-yellow-600 absolute top-4.5 left-4.5"></div>
+        </div>
+      </div>
+      
+      <!-- 金币数量 -->
+      <div class="font-pixel text-pixelGold text-lg md:text-xl pixel-text" id="coin-count">0.00</div>
+      
+      <!-- 最高纪录显示 -->
+      <div class="font-pixel text-gray-400 text-xs md:text-sm mt-1 pixel-text" id="high-score">最高纪录 0.00</div>
+    </div>
+    
+    <!-- 游戏主区域 -->
+    <div id="game-area" class="w-full h-full pt-20 pb-24 overflow-hidden relative">
+      <!-- 金币会动态添加到这里 -->
+    </div>
+    
+    <!-- 右侧功能按钮组 -->
+    <div class="absolute bottom-4 right-4 flex flex-col items-end z-10">
+      <div id="my-info-button" onclick="showMyInfo()" class="pixel-button bg-gray-700 mb-2 px-3 py-2 font-pixel text-sm md:text-base cursor-pointer z-20 whitespace-nowrap">
+        我的信息
+      </div>
+      <div id="test-button" class="pixel-button bg-gray-700 mb-2 px-3 py-2 font-pixel text-sm md:text-base cursor-pointer whitespace-nowrap">
+        测试
+      </div>
+      <div id="end-button" class="pixel-button bg-gray-700 px-3 py-2 font-pixel text-sm md:text-base cursor-pointer whitespace-nowrap">
+        结束游戏
+      </div>
+    </div>
+    
+    <!-- 红色核弹按钮 -->
+    <div id="nuclear-button" class="pixel-button bg-pixelRed absolute bottom-32 left-1/2 transform -translate-x-1/2 w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center cursor-pointer z-10">
+      <!-- 点击提示文字 -->
+      <div class="click-message font-pixel text-pixelGold text-xs md:text-sm pixel-text" id="click-message">
+        <div id="click-count-text"></div>
+        <div id="probability-text"></div>
+      </div>
+      
+      <!-- 核弹像素图标 -->
+      <div class="w-8 h-10 relative">
+        <div class="w-8 h-6 bg-black rounded-full"></div>
+        <div class="w-4 h-4 bg-black absolute top-6 left-2"></div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 排行榜弹窗 -->
+  <div id="ranking-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 hidden items-center justify-center">
+    <div class="bg-pixelDark p-4 md:p-6 rounded-lg pixel-border max-w-2xl w-full mx-4">
+      <h2 class="font-pixel text-center text-xl mb-4 pixel-text">排行榜</h2>
+      <div class="overflow-y-auto max-h-[60vh]">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-600">
+              <th class="py-2 text-left">名次</th>
+              <th class="py-2 text-left">用户头像</th>
+              <th class="py-2 text-left">用户名称</th>
+              <th class="py-2 text-left">地区</th>
+              <th class="py-2 text-left">最终金币数</th>
+            </tr>
+          </thead>
+          <tbody id="ranking-list"></tbody>
+          <tfoot id="user-ranking-entry" class="border-t-2 border-pixelGold"></tfoot>
+        </table>
+      </div>
+      <div class="mt-4 text-center">
+        <button id="close-ranking" class="pixel-button bg-gray-700 px-4 py-2 font-pixel text-sm cursor-pointer">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 我的信息弹窗 -->
+  <div id="my-info-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 hidden items-center justify-center">
+    <div class="bg-pixelDark p-4 md:p-6 rounded-lg pixel-border max-w-2xl w-full mx-4">
+      <h2 class="font-pixel text-center text-xl mb-4 pixel-text">我的信息</h2>
+      
+      <!-- 数据统计区域 -->
+      <div class="mb-4 pt-2 border-b border-gray-600 pb-4">
+        <h3 class="font-pixel text-center mb-3 pixel-text">游戏数据统计</h3>
+        <div class="grid grid-cols-2 gap-2" style="font-family: 'Microsoft YaHei', sans-serif;">
+          <div>总的游戏次数: <span id="total-games" class="text-pixelGold">0</span></div>
+          <div>总的游戏失败次数: <span id="total-losses" class="text-pixelGold">0</span></div>
+          <div>结束游戏最高金币: <span id="max-ended" class="text-pixelGold">0</span></div>
+          <div>失败游戏最高金币: <span id="max-lost" class="text-pixelGold">0</span></div>
+          <div>获得200金币次数: <span id="bonus-count" class="text-pixelGold">0</span></div>
+          <div>我的ID: <span id="user-id" class="text-pixelGold text-xs truncate"></span></div>
+        </div>
+      </div>
+      
+      <!-- 数据图表区域 -->
+      <div>
+        <h3 class="font-pixel text-center mb-3 pixel-text">金币获取趋势</h3>
+        <div class="chart-container bg-pixelLight bg-opacity-10">
+          <canvas id="stats-chart"></canvas>
+          <!-- 图表图例 -->
+          <div class="absolute bottom-2 right-2 text-xs flex items-center gap-3">
+            <div class="flex items-center">
+              <div class="w-3 h-3 bg-pixelRed rounded-full mr-1"></div>
+              <span>失败</span>
+            </div>
+            <div class="flex items-center">
+              <div class="w-3 h-3 bg-pixelGreen rounded-full mr-1"></div>
+              <span>主动结束</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="mt-4 text-center">
+        <button id="close-my-info" onclick="hideMyInfo()" class="pixel-button bg-gray-700 px-4 py-2 font-pixel text-sm cursor-pointer">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 游戏状态
+    const gameState = {
+      coins: 0,
+      isPlaying: true,
+      isTestMode: false,
+      clickCount: 0,
+      bonusCount: 0,
+      highScore: 0,
+      clickMessageTimer: null,
+      userId: generateUserId(),
+      userName: generateUserName(),
+      region: "未知",
+      stats: {
+        totalGames: 0,
+        totalLosses: 0,
+        maxCoinsEnded: 0,
+        maxCoinsLost: 0,
+        bonusCount: 0,
+        history: []
+      }
+    };
+    
+    // DOM元素
+    const nuclearButton = document.getElementById('nuclear-button');
+    const endButton = document.getElementById('end-button');
+    const testButton = document.getElementById('test-button');
+    const myInfoButton = document.getElementById('my-info-button');
+    const coinCountEl = document.getElementById('coin-count');
+    const highScoreEl = document.getElementById('high-score');
+    const gameArea = document.getElementById('game-area');
+    const rankingModal = document.getElementById('ranking-modal');
+    const rankingList = document.getElementById('ranking-list');
+    const userRankingEntry = document.getElementById('user-ranking-entry');
+    const closeRankingBtn = document.getElementById('close-ranking');
+    const myInfoModal = document.getElementById('my-info-modal');
+    const closeMyInfoBtn = document.getElementById('close-my-info');
+    const totalGamesEl = document.getElementById('total-games');
+    const totalLossesEl = document.getElementById('total-losses');
+    const maxEndedEl = document.getElementById('max-ended');
+    const maxLostEl = document.getElementById('max-lost');
+    const bonusCountEl = document.getElementById('bonus-count');
+    const userIdEl = document.getElementById('user-id');
+    const userRegionEl = document.getElementById('user-region');
+    const statsChart = document.getElementById('stats-chart').getContext('2d');
+    const statsChartElement = document.getElementById('stats-chart');
+    const clickMessage = document.getElementById('click-message');
+    const clickCountText = document.getElementById('click-count-text');
+    const probabilityText = document.getElementById('probability-text');
+    
+    // 初始化
+    function init() {
+      loadUserData();
+      updateCoinDisplay();
+      updateHighScoreDisplay();
+      setupEventListeners();
+      updateMyInfoDisplay();
+      
+      console.log('myInfoButton元素:', myInfoButton);
+      console.log('myInfoModal元素:', myInfoModal);
+    }
+    
+    // 生成用户ID和名称
+    function generateUserId() {
+      return 'user_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+    }
+    function generateUserName() {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      let name = '';
+      for (let i = 0; i < 16; i++) {
+        name += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return name;
+    }
+    
+    // 数据加载和保存
+    function loadUserData() {
+      const savedUser = localStorage.getItem('pixelGameUser');
+      if (savedUser) {
+        const userData = JSON.parse(savedUser);
+        gameState.userId = userData.userId;
+        gameState.userName = userData.userName;
+        gameState.region = userData.region || "未知";
+        gameState.stats = { ...gameState.stats, ...userData.stats };
+        gameState.bonusCount = gameState.stats.bonusCount || 0;
+        gameState.highScore = gameState.stats.maxCoinsEnded || 0;
+        if (!gameState.stats.history) gameState.stats.history = [];
+      }
+    }
+    function saveUserData() {
+      gameState.stats.bonusCount = gameState.bonusCount;
+      gameState.stats.maxCoinsEnded = gameState.highScore;
+      const userData = {
+        userId: gameState.userId,
+        userName: gameState.userName,
+        region: gameState.region,
+        stats: gameState.stats
+      };
+      localStorage.setItem('pixelGameUser', JSON.stringify(userData));
+    }
+    function saveRanking(coins) {
+      const rankings = getRankings();
+      rankings.push({
+        userId: gameState.userId,
+        userName: gameState.userName,
+        region: gameState.region,
+        coins: coins,
+        date: new Date().toISOString()
+      });
+      
+      const sortedRankings = rankings
+        .sort((a, b) => {
+          if (b.coins !== a.coins) return b.coins - a.coins;
+          return new Date(b.date) - new Date(a.date);
+        })
+        .slice(0, 100);
+      
+      localStorage.setItem('pixelGameRankings', JSON.stringify(sortedRankings));
+    }
+    function getRankings() {
+      const rankings = localStorage.getItem('pixelGameRankings');
+      return rankings ? JSON.parse(rankings) : [];
+    }
+    
+    // 更新我的信息显示
+    function updateMyInfoDisplay() {
+      totalGamesEl.textContent = gameState.stats.totalGames;
+      totalLossesEl.textContent = gameState.stats.totalLosses;
+      maxEndedEl.textContent = formatCoins(gameState.highScore);
+      maxLostEl.textContent = formatCoins(gameState.stats.maxCoinsLost);
+      bonusCountEl.textContent = gameState.bonusCount;
+      userIdEl.textContent = gameState.userId;
+      if (userRegionEl) userRegionEl.textContent = gameState.region;
+      drawStatsChart();
+    }
+    
+    // 排行榜相关函数
+    function showRanking() {
+      rankingList.innerHTML = '';
+      const rankings = getRankings();
+      
+      if (rankings.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td colspan="5" class="py-2 text-center">暂无排名数据</td>`;
+        rankingList.appendChild(row);
+      } else {
+        rankings.forEach((ranking, index) => {
+          const row = document.createElement('tr');
+          row.className = `border-b border-gray-700 last:border-0 ${ranking.userId === gameState.userId ? 'bg-gray-800 bg-opacity-50' : ''}`;
+          
+          const avatar = `
+            <div class="w-8 h-8 relative">
+              <div class="w-2 h-2 bg-blue-500 absolute top-0 left-0"></div>
+              <div class="w-2 h-2 bg-blue-500 absolute top-0 left-2"></div>
+              <div class="w-2 h-2 bg-blue-500 absolute top-0 left-4"></div>
+              <div class="w-2 h-2 bg-blue-500 absolute top-0 left-6"></div>
+              <div class="w-2 h-2 bg-blue-500 absolute top-2 left-0"></div>
+              <div class="w-2 h-2 bg-blue-400 absolute top-2 left-2"></div>
+              <div class="w-2 h-2 bg-blue-400 absolute top-2 left-4"></div>
+              <div class="w-2 h-2 bg-blue-500 absolute top-2 left-6"></div>
+              <div class="w-2 h-2 bg-blue-500 absolute top-4 left-0"></div>
+              <div class="w-2 h-2 bg-blue-400 absolute top-4 left-2"></div>
+              <div class="w-2 h-2 bg-blue-400 absolute top-4 left-4"></div>
+              <div class="w-2 h-2 bg-blue-500 absolute top-4 left-6"></div>
+              <div class="w-2 h-2 bg-blue-500 absolute top-6 left-0"></div>
+              <div class="w-2 h-2 bg-blue-500 absolute top-6 left-2"></div>
+              <div class="w-2 h-2 bg-blue-500 absolute top-6 left-4"></div>
+              <div class="w-2 h-2 bg-blue-500 absolute top-6 left-6"></div>
+            </div>
+          `;
+          
+          row.innerHTML = `
+            <td class="py-2">${index + 1}</td>
+            <td class="py-2">${avatar}</td>
+            <td class="py-2">${ranking.userName.substring(0, 8)}...</td>
+            <td class="py-2">${ranking.region}</td>
+            <td class="py-2">${formatCoins(ranking.coins)}</td>
+          `;
+          
+          rankingList.appendChild(row);
+        });
+      }
+      
+      addUserRankingEntry(rankings);
+      rankingModal.style.display = 'flex';
+    }
+    function addUserRankingEntry(rankings) {
+      const userEntry = rankings.find(r => r.userId === gameState.userId);
+      const allRankings = getRankings();
+      
+      let userRank = 1;
+      if (allRankings.length > 0) {
+        const sortedAll = [...allRankings].sort((a, b) => {
+          if (b.coins !== a.coins) return b.coins - a.coins;
+          return new Date(b.date) - new Date(a.date);
+        });
+        
+        const userIndex = sortedAll.findIndex(r => r.userId === gameState.userId);
+        userRank = userIndex > -1 ? userIndex + 1 : sortedAll.length + 1;
+      }
+      
+      const avatar = `
+        <div class="w-8 h-8 relative">
+          <div class="w-2 h-2 bg-pixelGold absolute top-0 left-0"></div>
+          <div class="w-2 h-2 bg-pixelGold absolute top-0 left-2"></div>
+          <div class="w-2 h-2 bg-pixelGold absolute top-0 left-4"></div>
+          <div class="w-2 h-2 bg-pixelGold absolute top-0 left-6"></div>
+          <div class="w-2 h-2 bg-pixelGold absolute top-2 left-0"></div>
+          <div class="w-2 h-2 bg-yellow-400 absolute top-2 left-2"></div>
+          <div class="w-2 h-2 bg-yellow-400 absolute top-2 left-4"></div>
+          <div class="w-2 h-2 bg-pixelGold absolute top-2 left-6"></div>
+          <div class="w-2 h-2 bg-pixelGold absolute top-4 left-0"></div>
+          <div class="w-2 h-2 bg-yellow-400 absolute top-4 left-2"></div>
+          <div class="w-2 h-2 bg-yellow-400 absolute top-4 left-4"></div>
+          <div class="w-2 h-2 bg-pixelGold absolute top-4 left-6"></div>
+          <div class="w-2 h-2 bg-pixelGold absolute top-6 left-0"></div>
+          <div class="w-2 h-2 bg-pixelGold absolute top-6 left-2"></div>
+          <div class="w-2 h-2 bg-pixelGold absolute top-6 left-4"></div>
+          <div class="w-2 h-2 bg-pixelGold absolute top-6 left-6"></div>
+        </div>
+      `;
+      
+      const currentCoins = gameState.isPlaying ? gameState.coins : 
+                          (gameState.stats.history.length > 0 ? gameState.stats.history[gameState.stats.history.length - 1].coins : 0);
+      
+      userRankingEntry.innerHTML = `
+        <tr>
+          <td class="py-2 font-bold text-pixelGold">${userRank > 100 ? '100+' : userRank}</td>
+          <td class="py-2">${avatar}</td>
+          <td class="py-2 font-bold text-pixelGold">${gameState.userName.substring(0, 8)}...(我)</td>
+          <td class="py-2">${gameState.region}</td>
+          <td class="py-2 font-bold text-pixelGold">${formatCoins(currentCoins)}</td>
+        </tr>
+      `;
+    }
+    function hideRanking() { rankingModal.style.display = 'none'; }
+    
+    // 我的信息弹窗控制
+    window.showMyInfo = function() {
+      console.log('尝试显示我的信息');
+      updateMyInfoDisplay();
+      if (myInfoModal) {
+        myInfoModal.style.display = 'flex';
+        setTimeout(drawStatsChart, 100);
+      } else {
+        console.error('未找到myInfoModal元素');
+      }
+    }
+    
+    window.hideMyInfo = function() {
+      if (myInfoModal) {
+        myInfoModal.style.display = 'none';
+      }
+    }
+    
+    // 颜色渐变辅助函数
+    function getClickCountColor(n) {
+      const colorStops = [
+        { stop: 1, color: [200, 200, 200] },
+        { stop: 5, color: [255, 255, 255] },
+        { stop: 10, color: [52, 199, 89] },
+        { stop: 20, color: [50, 130, 255] },
+        { stop: 30, color: [175, 82, 222] },
+        { stop: 50, color: [255, 159, 10] },
+        { stop: 100, color: [255, 59, 48] },
+        { stop: 200, color: [255, 0, 0] }
+      ];
+      
+      if (n >= colorStops[colorStops.length - 1].stop) {
+        return `rgb(${colorStops[colorStops.length - 1].color.join(',')})`;
+      }
+      
+      for (let i = 0; i < colorStops.length - 1; i++) {
+        if (n >= colorStops[i].stop && n < colorStops[i + 1].stop) {
+          const start = colorStops[i];
+          const end = colorStops[i + 1];
+          const ratio = (n - start.stop) / (end.stop - start.stop);
+          const r = Math.round(start.color[0] + (end.color[0] - start.color[0]) * ratio);
+          const g = Math.round(start.color[1] + (end.color[1] - start.color[1]) * ratio);
+          const b = Math.round(start.color[2] + (end.color[2] - start.color[2]) * ratio);
+          return `rgb(${r}, ${g}, ${b})`;
+        }
+      }
+      
+      return 'rgb(200, 200, 200)';
+    }
+    
+    function getProbabilityColor(m) {
+      let colorStops;
+      
+      if (m < 10) {
+        colorStops = [
+          { stop: 0, color: [100, 0, 0] },
+          { stop: 5, color: [150, 0, 0] },
+          { stop: 10, color: [255, 59, 48] }
+        ];
+      } else {
+        colorStops = [
+          { stop: 100, color: [52, 199, 89] },
+          { stop: 80, color: [50, 130, 255] },
+          { stop: 60, color: [50, 255, 255] },
+          { stop: 40, color: [175, 82, 222] },
+          { stop: 20, color: [255, 159, 10] },
+          { stop: 10, color: [255, 59, 48] }
+        ];
+      }
+      
+      if (m >= colorStops[0].stop) {
+        return `rgb(${colorStops[0].color.join(',')})`;
+      }
+      
+      if (m <= colorStops[colorStops.length - 1].stop) {
+        return `rgb(${colorStops[colorStops.length - 1].color.join(',')})`;
+      }
+      
+      for (let i = 0; i < colorStops.length - 1; i++) {
+        if (m <= colorStops[i].stop && m > colorStops[i + 1].stop) {
+          const start = colorStops[i];
+          const end = colorStops[i + 1];
+          const ratio = (start.stop - m) / (start.stop - end.stop);
+          const r = Math.round(start.color[0] + (end.color[0] - start.color[0]) * ratio);
+          const g = Math.round(start.color[1] + (end.color[1] - start.color[1]) * ratio);
+          const b = Math.round(start.color[2] + (end.color[2] - start.color[2]) * ratio);
+          return `rgb(${r}, ${g}, ${b})`;
+        }
+      }
+      
+      return 'rgb(255, 59, 48)';
+    }
+    
+    function getCoinColorByProgress(progress) {
+      let r, g, b;
+      
+      if (progress <= 1) {
+        r = 255;
+        g = Math.round(215 - 115 * progress);
+        b = 0;
+      } else {
+        const excess = Math.min(progress - 1, 1);
+        r = 255;
+        g = Math.round(100 - 100 * excess);
+        b = 0;
+      }
+      
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+    
+    // 显示点击提示文字
+    function showClickMessage(count, isBonus = false) {
+      if (gameState.clickMessageTimer) {
+        clearTimeout(gameState.clickMessageTimer);
+      }
+      
+      const probability = Math.pow(0.99, count);
+      
+      let formattedProbability;
+      if (probability >= 0.01) {
+        formattedProbability = (probability * 100).toFixed(Math.min(4, 50));
+      } else {
+        formattedProbability = (probability * 100).toFixed(50).replace(/0+$/, '').replace(/\.$/, '.0');
+      }
+      
+      const countColor = getClickCountColor(count);
+      const probColor = getProbabilityColor(parseFloat(formattedProbability));
+      
+      let countText = `不可思议，您已连续点击<span style="color: ${countColor}">${count}</span>次！`;
+      if (isBonus) {
+        countText = `<span style="color: #FFD700; text-shadow: 0 0 5px #FFD700;">🎉 双倍奖励！</span> ${countText}`;
+      }
+      
+      clickCountText.innerHTML = countText;
+      probabilityText.innerHTML = `这样的概率只有<span style="color: ${probColor}">${formattedProbability}</span>%！`;
+      
+      clickMessage.classList.add('visible');
+      
+      gameState.clickMessageTimer = setTimeout(() => {
+        clickMessage.classList.remove('visible');
+        gameState.clickMessageTimer = null;
+      }, 3000);
+    }
+    
+    // 工具函数
+    function formatCoins(coins) {
+      if (coins >= 1e12) return (coins / 1e12).toFixed(2) + '兆';
+      if (coins >= 1e8) return (coins / 1e8).toFixed(2) + '亿';
+      if (coins >= 1e4) return (coins / 1e4).toFixed(2) + '万';
+      return coins.toFixed(2);
+    }
+    
+    function updateHighScoreDisplay() {
+      highScoreEl.textContent = `最高纪录 ${formatCoins(gameState.highScore)}`;
+    }
+    
+    function updateCoinDisplay() {
+      const currentCoins = gameState.coins;
+      coinCountEl.textContent = formatCoins(currentCoins);
+      
+      if (gameState.highScore > 0) {
+        const progress = currentCoins / gameState.highScore;
+        const coinColor = getCoinColorByProgress(progress);
+        coinCountEl.style.color = coinColor;
+      } else {
+        coinCountEl.style.color = '#FFD700';
+      }
+    }
+    
+    function createFallingCoin(isBonus = false) {
+      const coin = document.createElement('div');
+      coin.className = `absolute w-8 h-8 ${isBonus ? 'bonus-coin' : ''}`;
+      
+      const gameAreaWidth = gameArea.offsetWidth;
+      const leftPos = Math.random() * (gameAreaWidth - 32);
+      coin.style.left = `${leftPos}px`;
+      coin.style.top = '-32px';
+      
+      const coinColor = isBonus ? 'gold' : 'pixelGold';
+      const centerColor = isBonus ? 'yellow-400' : 'yellow-600';
+      
+      coin.innerHTML = `
+        <div class="w-8 h-8 relative">
+          <div class="w-2 h-2 bg-${coinColor} absolute top-0 left-2"></div>
+          <div class="w-2 h-2 bg-${coinColor} absolute top-0 left-4"></div>
+          <div class="w-2 h-2 bg-${coinColor} absolute top-2 left-0"></div>
+          <div class="w-4 h-4 bg-${coinColor} absolute top-2 left-2"></div>
+          <div class="w-2 h-2 bg-${coinColor} absolute top-2 left-6"></div>
+          <div class="w-2 h-2 bg-${coinColor} absolute top-4 left-0"></div>
+          <div class="w-4 h-4 bg-${coinColor} absolute top-4 left-2"></div>
+          <div class="w-2 h-2 bg-${coinColor} absolute top-4 left-6"></div>
+          <div class="w-2 h-2 bg-${coinColor} absolute top-6 left-2"></div>
+          <div class="w-2 h-2 bg-${coinColor} absolute top-6 left-4"></div>
+          <div class="w-2 h-2 bg-${centerColor} absolute top-3 left-3"></div>
+        </div>
+        <div class="coin-shadow hidden"></div>
+      `;
+      
+      gameArea.appendChild(coin);
+      animateCoinFall(coin);
+    }
+    function animateCoinFall(coin) {
+      const gameAreaHeight = gameArea.offsetHeight;
+      const shadow = coin.querySelector('.coin-shadow');
+      let position = -32;
+      let velocity = 0;
+      const gravity = 0.5;
+      const bounceFactor = 0.6;
+      const groundLevel = gameAreaHeight - 32;
+      let bounces = 0;
+      const maxBounces = 3;
+      
+      function updatePosition() {
+        if (bounces >= maxBounces && velocity < 1) {
+          shadow.classList.remove('hidden');
+          return;
+        }
+        
+        velocity += gravity;
+        position += velocity;
+        
+        if (position >= groundLevel) {
+          position = groundLevel;
+          velocity = -velocity * bounceFactor;
+          bounces++;
+        }
+        
+        coin.style.top = `${position}px`;
+        requestAnimationFrame(updatePosition);
+      }
+      
+      updatePosition();
+    }
+    
+    // 按钮事件处理
+    function handleNuclearButtonClick() {
+      console.log('红色按钮被点击');
+      if (!gameState.isPlaying) {
+        restartGame();
+        return;
+      }
+      
+      const successProbability = gameState.isTestMode ? 0.5 : 0.99;
+      const random = Math.random();
+      
+      if (random < successProbability) {
+        const coinRandom = Math.random();
+        const isBonus = coinRandom >= 0.99;
+        const coinsToAdd = isBonus ? 200 : 100;
+        
+        gameState.coins += coinsToAdd;
+        gameState.clickCount++;
+        
+        if (isBonus) {
+          gameState.bonusCount++;
+        }
+        
+        updateCoinDisplay();
+        
+        createFallingCoin(isBonus);
+        if (isBonus) {
+          setTimeout(() => createFallingCoin(false), 150);
+        }
+        
+        showClickMessage(gameState.clickCount, isBonus);
+      } else {
+        gameState.stats.history.push({
+          type: 'loss',
+          coins: gameState.coins,
+          timestamp: new Date().toISOString()
+        });
+        gameState.stats.totalLosses++;
+        if (gameState.coins > gameState.stats.maxCoinsLost) {
+          gameState.stats.maxCoinsLost = gameState.coins;
+        }
+        saveUserData();
+        showRanking();
+        gameState.isPlaying = false;
+        clickMessage.classList.remove('visible');
+        if (gameState.clickMessageTimer) {
+          clearTimeout(gameState.clickMessageTimer);
+          gameState.clickMessageTimer = null;
+        }
+      }
+    }
+    function toggleTestMode() {
+      gameState.isTestMode = !gameState.isTestMode;
+      testButton.textContent = gameState.isTestMode ? '测试中' : '测试';
+      testButton.classList.toggle('bg-green-700', gameState.isTestMode);
+      testButton.classList.toggle('bg-gray-700', !gameState.isTestMode);
+    }
+    function endGame() {
+      if (!gameState.isPlaying) return;
+      
+      gameState.stats.history.push({
+        type: 'end',
+        coins: gameState.coins,
+        timestamp: new Date().toISOString()
+      });
+      gameState.stats.totalGames++;
+      
+      if (gameState.coins > gameState.highScore) {
+        gameState.highScore = gameState.coins;
+        updateHighScoreDisplay();
+      }
+      
+      saveUserData();
+      
+      const rankings = getRankings();
+      const hasRanking资格 = gameState.coins > 0 && 
+                             (rankings.length < 100 || gameState.coins > rankings[rankings.length - 1].coins);
+      
+      if (hasRanking资格) {
+        saveRanking(gameState.coins);
+      }
+      
+      showRanking();
+      gameState.isPlaying = false;
+      clickMessage.classList.remove('visible');
+      if (gameState.clickMessageTimer) {
+        clearTimeout(gameState.clickMessageTimer);
+        gameState.clickMessageTimer = null;
+      }
+    }
+    function restartGame() {
+      const coins = gameArea.querySelectorAll('div[class*="absolute w-8 h-8"]');
+      coins.forEach(coin => coin.remove());
+      
+      gameState.coins = 0;
+      gameState.clickCount = 0;
+      gameState.isPlaying = true;
+      clickMessage.classList.remove('visible');
+      if (gameState.clickMessageTimer) {
+        clearTimeout(gameState.clickMessageTimer);
+        gameState.clickMessageTimer = null;
+      }
+      updateCoinDisplay();
+    }
+    
+    // 事件监听器设置
+    function setupEventListeners() {
+      if (myInfoButton) {
+        myInfoButton.removeEventListener('click', showMyInfo);
+        myInfoButton.removeEventListener('click', window.showMyInfo);
+        myInfoButton.addEventListener('click', window.showMyInfo);
+        myInfoButton.style.pointerEvents = 'auto';
+        myInfoButton.style.cursor = 'pointer';
+      } else {
+        console.error('未找到myInfoButton元素');
+      }
+      
+      if (nuclearButton) {
+        nuclearButton.removeEventListener('click', handleNuclearButtonClick);
+        nuclearButton.addEventListener('click', handleNuclearButtonClick);
+      }
+      
+      if (testButton) {
+        testButton.removeEventListener('click', toggleTestMode);
+        testButton.addEventListener('click', toggleTestMode);
+      }
+      
+      if (endButton) {
+        endButton.removeEventListener('click', endGame);
+        endButton.addEventListener('click', endGame);
+      }
+      
+      if (closeRankingBtn) {
+        closeRankingBtn.removeEventListener('click', hideRanking);
+        closeRankingBtn.addEventListener('click', hideRanking);
+      }
+      
+      if (closeMyInfoBtn) {
+        closeMyInfoBtn.removeEventListener('click', hideMyInfo);
+        closeMyInfoBtn.addEventListener('click', hideMyInfo);
+      }
+      
+      window.addEventListener('resize', () => {
+        if (myInfoModal && myInfoModal.style.display === 'flex') {
+          drawStatsChart();
+        }
+      });
+      
+      window.addEventListener('beforeunload', () => {
+        if (gameState.isPlaying && gameState.coins > 0) {
+          endGame();
+        }
+      });
+    }
+    
+    // 绘制横向柱状图表
+    function drawStatsChart() {
+      statsChart.clearRect(0, 0, statsChartElement.width, statsChartElement.height);
+      
+      const container = document.querySelector('.chart-container');
+      statsChartElement.width = container.clientWidth;
+      statsChartElement.height = container.clientHeight;
+      
+      const recentHistory = [...gameState.stats.history].slice(-20);
+      
+      if (recentHistory.length === 0) {
+        statsChart.fillStyle = '#fff';
+        statsChart.font = '10px Press Start 2P, cursive';
+        statsChart.textAlign = 'center';
+        statsChart.fillText('暂无游戏数据', statsChartElement.width / 2, statsChartElement.height / 2);
+        return;
+      }
+      
+      const padding = { top: 20, right: 60, bottom: 40, left: 20 };
+      const chartWidth = statsChartElement.width - padding.left - padding.right;
+      const chartHeight = statsChartElement.height - padding.top - padding.bottom;
+      
+      const maxCoins = Math.max(...recentHistory.map(item => item.coins), 100);
+      const gameCount = recentHistory.length;
+      const barWidth = 10;
+      const barSpacing = Math.max(5, (chartWidth - barWidth * gameCount) / (gameCount - 1 || 1));
+      
+      statsChart.strokeStyle = '#666';
+      statsChart.lineWidth = 1;
+      
+      // X轴
+      statsChart.beginPath();
+      statsChart.moveTo(padding.left, statsChartElement.height - padding.bottom);
+      statsChart.lineTo(statsChartElement.width - padding.right, statsChartElement.height - padding.bottom);
+      statsChart.stroke();
+      
+      // Y轴
+      statsChart.beginPath();
+      statsChart.moveTo(padding.left, padding.top);
+      statsChart.lineTo(padding.left, statsChartElement.height - padding.bottom);
+      statsChart.stroke();
+      
+      // Y轴刻度和标签
+      const yTicks = 5;
+      statsChart.fillStyle = '#fff';
+      statsChart.font = '8px Press Start 2P, cursive';
+      statsChart.textAlign = 'right';
+      
+      for (let i = 0; i <= yTicks; i++) {
+        const y = statsChartElement.height - padding.bottom - (i * chartHeight / yTicks);
+        const value = Math.round((i * maxCoins) / yTicks);
+        
+        statsChart.beginPath();
+        statsChart.moveTo(padding.left - 5, y);
+        statsChart.lineTo(padding.left, y);
+        statsChart.stroke();
+        
+        statsChart.fillText(formatCoins(value), padding.left - 10, y + 3);
+      }
+      
+      // X轴游戏次数标签
+      statsChart.textAlign = 'center';
+      recentHistory.forEach((item, index) => {
+        const x = padding.left + index * (barWidth + barSpacing) + barWidth / 2;
+        const gameNumber = gameState.stats.history.length - recentHistory.length + index + 1;
+        statsChart.fillText(`#${gameNumber}`, x, statsChartElement.height - padding.bottom + 15);
+      });
+      
+      // 绘制柱状图
+      recentHistory.forEach((item, index) => {
+        const barHeight = (item.coins / maxCoins) * chartHeight;
+        const x = padding.left + index * (barWidth + barSpacing);
+        const y = statsChartElement.height - padding.bottom - barHeight;
+        
+        statsChart.fillStyle = item.type === 'loss' ? '#FF3B30' : '#34C759';
+        statsChart.fillRect(x, y, barWidth, barHeight);
+        
+        statsChart.strokeStyle = '#000';
+        statsChart.lineWidth = 1;
+        statsChart.strokeRect(x, y, barWidth, barHeight);
+        
+        if (barHeight > 20) {
+          statsChart.fillStyle = '#fff';
+          statsChart.font = '7px Press Start 2P, cursive';
+          statsChart.textAlign = 'center';
+          statsChart.fillText(formatCoins(item.coins), x + barWidth / 2, y - 5);
+        }
+      });
+      
+      // 坐标轴标题
+      statsChart.font = '8px Press Start 2P, cursive';
+      statsChart.textAlign = 'center';
+      statsChart.fillText('最近20次游戏', statsChartElement.width / 2, statsChartElement.height - 5);
+      
+      statsChart.save();
+      statsChart.translate(15, statsChartElement.height / 2);
+      statsChart.rotate(-Math.PI / 2);
+      statsChart.fillText('金币数', 0, 0);
+      statsChart.restore();
+    }
+    
+    // 确保DOM完全加载后再初始化
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>

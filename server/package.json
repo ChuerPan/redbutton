@@ -1,0 +1,19 @@
+{
+  "name": "redbutton-game-server",
+  "version": "1.0.0",
+  "description": "别点红色按钮 - 游戏后端服务",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "init-db": "node init-db.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "better-sqlite3": "^9.4.3",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2"
+  },
+  "keywords": ["game", "leaderboard"],
+  "author": "",
+  "license": "MIT"
+}
